@@ -86,6 +86,7 @@ struct Outer : public OuterParent {
 int main() {
     using json = nlohmann::json;
 
+    // Parent item will be set to default
     const auto* text = R"(
     {
         "innerVector": [
@@ -94,20 +95,7 @@ int main() {
             }
         ],
         "optItem": 12345,
-        "outerItem": 6,
-        "parentItem": 2
-    }
-    )";
-
-    const auto* text2 = R"(
-    {
-        "innerVector": [
-            {
-                "innerItem": 5
-            }
-        ],
-        "outerItem": 6,
-        "parentItem": 2
+        "outerItem": 6
     }
     )";
 
@@ -116,8 +104,27 @@ int main() {
     Outer::Inner inner { .innerItem = 15 };
     outer.innerVector.push_back(inner);
 
+    // Should NOT be output in dump
+    outer.optItem = std::nullopt;
+
     json outerJson = outer;
     std::printf("JSON:\n%s\n", outerJson.dump(2).c_str());
+
+    // ----- Expected output ------
+    //
+    // JSON:
+    // {
+    //   "innerVector": [
+    //     {
+    //       "innerItem": 5
+    //     },
+    //     {
+    //       "innerItem": 15
+    //     }
+    //   ],
+    //   "outerItem": 6,
+    //   "parentItem": 1
+    // }
 
     return 0;
 }
