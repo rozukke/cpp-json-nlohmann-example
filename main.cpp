@@ -5,6 +5,7 @@
 #include <optional>
 #include <vector>
 
+// This is an override to get over stupid #ifdefs that make it hard to use macros with std::optional.
 NLOHMANN_JSON_NAMESPACE_BEGIN
 namespace detail
 {
@@ -23,6 +24,11 @@ void from_json(const BasicJsonType& j, std::optional<T>& opt)
 }
 NLOHMANN_JSON_NAMESPACE_END
 
+// A type check that does not use <type_traits>, for very good reason - as
+// you will see if you try to use them with macros.
+namespace {
+
+// Optimised away for all non-std::optional types
 template<typename T>
 inline bool has_value(T& value)
 {
@@ -35,8 +41,14 @@ inline bool has_value(const std::optional<U>& opt)
     return opt.has_value();
 }
 
+}
+
 // Reasoning: the nlohmann json library is OLD, and BAD. There is no consideration for optionals,
-// and if a check for std::optional
+// and if one is dumped to string, it will appear as `"optional": null` instead of being excluded,
+// and there is currently no option to exclude it. This is the messed up manual workaround.
+//
+// We hook into the macros and template in a check that only happens for std::optional
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmacro-redefined"
 
@@ -47,11 +59,14 @@ inline bool has_value(const std::optional<U>& opt)
 
 #pragma GCC diagnostic pop
 
+
+
+
 struct OuterParent {
     int parentItem = 1;
-    std::optional<int> optItemNonInit;
+    std::optional<int> optItem;
 
-    NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(OuterParent, parentItem, optItemNonInit)
+    NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(OuterParent, parentItem, optItem)
 };
 
 struct Outer : public OuterParent {
@@ -72,6 +87,19 @@ int main() {
     using json = nlohmann::json;
 
     const auto* text = R"(
+    {
+        "innerVector": [
+            {
+                "innerItem": 5
+            }
+        ],
+        "optItem": 12345,
+        "outerItem": 6,
+        "parentItem": 2
+    }
+    )";
+
+    const auto* text2 = R"(
     {
         "innerVector": [
             {
