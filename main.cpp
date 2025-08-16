@@ -1,4 +1,3 @@
-#define JSON_DIAGNOSTICS 1
 #include "nlohmann/detail/macro_scope.hpp"
 
 #include <nlohmann/json.hpp>
@@ -61,10 +60,19 @@ inline bool has_value(const std::optional<U>& opt)
 
 
 
+struct Interface
+{
+    virtual bool checkFields() = 0;
+    virtual ~Interface() = default;
+};
 
-struct OuterParent {
+struct OuterParent : public Interface {
     int parentItem = 1;
     std::optional<int> optItem;
+
+    bool checkFields() override {
+        return parentItem == 1;
+    }
 
     NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(OuterParent, parentItem, optItem)
 };
@@ -79,6 +87,11 @@ struct Outer : public OuterParent {
     std::vector<Inner> innerVector;
 
     int outerItem = 3;
+
+    bool checkFields() override {
+        if (!OuterParent::checkFields() || outerItem != 3) return false;
+        return true;
+    }
 
     NLOHMANN_DEFINE_DERIVED_TYPE_INTRUSIVE(Outer, OuterParent, innerVector, outerItem)
 };
